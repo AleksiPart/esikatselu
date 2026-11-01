@@ -7,7 +7,9 @@
 <script>
 (async () => {
   const BASE = "/esikatselu/", SALT = "agency-os-esikatselu-v2", ITER = 200000, m = document.getElementById("m");
-  const tok = decodeURIComponent(location.pathname.slice(BASE.length)).replace(/\/+$/, "").toLowerCase();
+  const fromPath = decodeURIComponent(location.pathname.slice(BASE.length)).replace(/\/+$/, "");
+  const tok = (fromPath || location.search.slice(1)).toLowerCase();
+  if (!tok) { m.textContent = "Esikatselut avautuvat vain henkilökohtaisella linkillä."; return; }
   if (!/^[a-z0-9-]{9,90}$/.test(tok)) { m.textContent = "Sivua ei löytynyt."; return; }
   if (!window.crypto || !crypto.subtle || typeof DecompressionStream === "undefined") { m.textContent = "Selain on liian vanha. Päivitä selain ja avaa linkki uudelleen."; return; }
   try {
