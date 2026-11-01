@@ -1,0 +1,28 @@
+<!doctype html><html lang="fi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet"><meta name="referrer" content="no-referrer">
+<title>Esikatselu</title>
+<style>html,body{margin:0;background:#fff}body{min-height:100vh;display:grid;place-items:center;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#6b6b6b}</style>
+</head><body><p id="m">Avataan…</p>
+<script>
+(async () => {
+  const BASE = "/esikatselu/", SALT = "agency-os-esikatselu-v2", ITER = 200000, m = document.getElementById("m");
+  const tok = decodeURIComponent(location.pathname.slice(BASE.length)).replace(/\/+$/, "").toLowerCase();
+  if (!/^[a-z0-9-]{9,90}$/.test(tok)) { m.textContent = "Sivua ei löytynyt."; return; }
+  if (!window.crypto || !crypto.subtle || typeof DecompressionStream === "undefined") { m.textContent = "Selain on liian vanha. Päivitä selain ja avaa linkki uudelleen."; return; }
+  try {
+    const enc = new TextEncoder();
+    const hex = (b) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
+    const id = hex(await crypto.subtle.digest("SHA-256", enc.encode("id:" + tok))).slice(0, 32);
+    const r = await fetch(BASE + "x/" + id + ".txt", { cache: "no-store" });
+    if (!r.ok) { m.textContent = "Sivua ei löytynyt."; return; }
+    const raw = Uint8Array.from(atob((await r.text()).trim()), (c) => c.charCodeAt(0));
+    const km = await crypto.subtle.importKey("raw", enc.encode(tok), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: enc.encode(SALT), iterations: ITER, hash: "SHA-256" },
+      km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, key, raw.slice(12));
+    const html = await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+    document.open(); document.write(html); document.close();
+  } catch (e) { m.textContent = "Sivua ei voitu avata."; }
+})();
+</script></body></html>
